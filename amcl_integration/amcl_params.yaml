@@ -1,0 +1,42 @@
+amcl:
+  ros__parameters:
+    use_sim_time: false
+    # Noise model — HIGH values because dead-reckoning odometry is very noisy
+    alpha1: 0.5     # rotation noise from rotation
+    alpha2: 0.5     # rotation noise from translation
+    alpha3: 0.5     # translation noise from translation
+    alpha4: 0.5     # translation noise from rotation
+    alpha5: 0.2
+    base_frame_id: "base_link"
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+    do_beamskip: false
+    global_frame_id: "map"
+    lambda_short: 0.1
+    laser_likelihood_max_dist: 2.0
+    laser_max_range: 12.0
+    laser_min_range: 0.15
+    laser_model_type: "likelihood_field"
+    max_beams: 60
+    max_particles: 5000      # more particles for bad odometry
+    min_particles: 1000
+    odom_frame_id: "odom"
+    pf_err: 0.05
+    pf_z: 0.99
+    recovery_alpha_fast: 0.001 # enable recovery behaviors
+    recovery_alpha_slow: 0.0001
+    resample_interval: 1
+    robot_model_type: "differential"
+    save_pose_rate: 0.5
+    sigma_hit: 0.2
+    tf_broadcast: true
+    transform_tolerance: 2.0    # tolerant for slow odom updates
+    update_min_a: 0.1        # update on smaller rotations
+    update_min_d: 0.15       # update on smaller translations
+    z_hit: 0.5
+    z_max: 0.05
+    z_rand: 0.5
+    z_short: 0.05
+    scan_topic: /scan
+    set_initial_pose: false  # Wait for /initialpose via dashboard

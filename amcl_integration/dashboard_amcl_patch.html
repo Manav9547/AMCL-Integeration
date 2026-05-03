@@ -1,0 +1,164 @@
+<!-- 
+AMCL Dashboard Patch
+──────────────────────────────────────────────────────────
+Add these snippets to your templates/index.html to enable 
+AMCL controls from the web dashboard.
+-->
+
+<!-- 1. HTML UI CONTROLS: Add this near your existing navigation or map controls -->
+<div id="amcl-controls" class="control-panel">
+    <h3>Localization (AMCL)</h3>
+    <div class="status-indicator">
+        <span id="amcl-status-dot" class="dot gray"></span>
+        <span id="amcl-status-text">AMCL Inactive</span>
+    </div>
+    
+    <div class="button-group">
+        <!-- Assuming you have a way to select a saved map, e.g., a dropdown #saved-map-select -->
+        <button id="btn-start-amcl" onclick="startAMCL()" class="btn btn-primary">Start AMCL</button>
+        <button id="btn-stop-amcl" onclick="stopAMCL()" class="btn btn-danger" style="display: none;">Stop AMCL</button>
+        <button id="btn-set-pose" onclick="enablePoseSelection()" class="btn btn-secondary" style="display: none;">Set Initial Pose</button>
+    </div>
+</div>
+
+<!-- 2. JAVASCRIPT LOGIC: Add this inside your <script> tag at the bottom of index.html -->
+<script>
+    let isSettingPose = false;
+
+    // --- API Calls ---
+
+    async function startAMCL() {
+        // Replace with how you get the selected map in your UI
+        const mapName = prompt("Enter saved map name (e.g., my_map):"); 
+        if (!mapName) return;
+
+        try {
+            const res = await fetch('/api/amcl/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ map_name: mapName })
+            });
+            const data = await res.json();
+            if (data.status === 'started') {
+                document.getElementById('btn-start-amcl').style.display = 'none';
+                document.getElementById('btn-stop-amcl').style.display = 'inline-block';
+                document.getElementById('btn-set-pose').style.display = 'inline-block';
+                updateAMCLStatus(true, false);
+                alert("AMCL started! Please set the initial pose on the map.");
+            } else {
+                alert("Error starting AMCL: " + data.message);
+            }
+        } catch (err) {
+            console.error("Failed to start AMCL", err);
+        }
+    }
+
+    async function stopAMCL() {
+        try {
+            const res = await fetch('/api/amcl/stop', { method: 'POST' });
+            const data = await res.json();
+            if (data.status === 'stopped') {
+                document.getElementById('btn-start-amcl').style.display = 'inline-block';
+                document.getElementById('btn-stop-amcl').style.display = 'none';
+                document.getElementById('btn-set-pose').style.display = 'none';
+                isSettingPose = false;
+                updateAMCLStatus(false, false);
+            }
+        } catch (err) {
+            console.error("Failed to stop AMCL", err);
+        }
+    }
+
+    async function sendInitialPose(x, y, yaw) {
+        try {
+            const res = await fetch('/api/amcl/initial_pose', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ x, y, yaw })
+            });
+            isSettingPose = false;
+            document.getElementById('btn-set-pose').classList.remove('active');
+        } catch (err) {
+            console.error("Failed to set pose", err);
+        }
+    }
+
+    // --- UI State ---
+
+    function enablePoseSelection() {
+        isSettingPose = true;
+        document.getElementById('btn-set-pose').classList.add('active');
+        alert("Click and drag on the map to set position and orientation (yaw).");
+    }
+
+    function updateAMCLStatus(isActive, isConverged) {
+        const dot = document.getElementById('amcl-status-dot');
+        const text = document.getElementById('amcl-status-text');
+        
+        if (!isActive) {
+            dot.className = "dot gray";
+            text.innerText = "AMCL Inactive (SLAM)";
+        } else if (isConverged) {
+            dot.className = "dot green";
+            text.innerText = "AMCL Converged";
+        } else {
+            dot.className = "dot orange";
+            text.innerText = "AMCL Needs Pose / Converging";
+        }
+    }
+
+    // --- Map Click Integration ---
+    // Note: You must integrate this into your existing map canvas event listeners.
+    // Assuming you have a canvas named 'mapCanvas' and variables 'mapOriginX', 'mapOriginY', 'mapResolution'
+    
+    let poseStartX = 0, poseStartY = 0;
+
+    /* Add these to your canvas event listeners:
+    
+    mapCanvas.addEventListener('mousedown', (e) => {
+        if (!isSettingPose) return;
+        // Convert screen pixels to map coordinates (x, y)
+        // poseStartX = mapX; poseStartY = mapY;
+    });
+
+    mapCanvas.addEventListener('mouseup', (e) => {
+        if (!isSettingPose) return;
+        // Convert screen pixels to map coordinates (x, y)
+        // const mapEndX = mapX; const mapEndY = mapY;
+        
+        // Calculate yaw from drag direction
+        // const yaw = Math.atan2(mapEndY - poseStartY, mapEndX - poseStartX);
+        
+        // sendInitialPose(poseStartX, poseStartY, yaw);
+    });
+    */
+
+    // --- Socket.IO Telemetry Listener Update ---
+    // If you are receiving telemetry over websockets, handle the AMCL state here:
+    /*
+    socket.on('telemetry', (data) => {
+        if (data.amcl_active !== undefined) {
+            updateAMCLStatus(data.amcl_active, data.amcl_converged);
+            
+            // Sync button visibility with actual state
+            document.getElementById('btn-start-amcl').style.display = data.amcl_active ? 'none' : 'inline-block';
+            document.getElementById('btn-stop-amcl').style.display = data.amcl_active ? 'inline-block' : 'none';
+            document.getElementById('btn-set-pose').style.display = data.amcl_active ? 'inline-block' : 'none';
+        }
+    });
+    */
+</script>
+
+<style>
+    /* Basic styles for the status dot */
+    .dot {
+        height: 10px; width: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .dot.gray { background-color: #ccc; }
+    .dot.green { background-color: #28a745; }
+    .dot.orange { background-color: #fd7e14; }
+    .btn.active { box-shadow: 0 0 0 0.2rem rgba(0,123,255,.5); border: 2px solid #0056b3; }
+</style>
